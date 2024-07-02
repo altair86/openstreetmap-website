@@ -3,6 +3,13 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system packages then clean up to minimize image size
+
+RUN apt-get update \
+ && apt install dirmngr ca-certificates software-properties-common apt-transport-https lsb-release curl haproxy -y
+
+RUN curl -fSsL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /usr/share/keyrings/postgresql.gpg > /dev/null
+RUN echo deb [arch=amd64,arm64,ppc64el signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main | tee /etc/apt/sources.list.d/postgresql.list
+
 RUN apt-get update \
  && apt-get install --no-install-recommends -y \
       build-essential \
@@ -30,6 +37,7 @@ RUN apt-get update \
       unzip \
       nodejs \
       npm \
+      net-tools \
  && npm install --global yarn \
  # We can't use snap packages for firefox inside a container, so we need to get firefox+geckodriver elsewhere
  && add-apt-repository -y ppa:mozillateam/ppa \
@@ -57,3 +65,12 @@ RUN bundle install
 ADD package.json yarn.lock /app/
 ADD bin/yarn /app/bin/
 RUN bundle exec bin/yarn install
+
+ADD haproxy.conf /app/
+#RUN haproxy -D -f /app/haproxy.conf
+#RUN netstat -natp
+ADD migrate.sh /app/
+RUN chmod +x /app/migrate.sh
+
+ADD import.sh /app/
+RUN chmod +x /app/import.sh
